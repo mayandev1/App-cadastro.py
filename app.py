@@ -1,8 +1,14 @@
 import sqlite3
-import tkinter as tk
-from tkinter import messagebox
+import getpass
+import bcrypt
 
-# Passo 2: Configuração do banco de dados
+def limpar_terminal():
+    import os
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def pausar():
+    input("\nPressione Enter para continuar...")
+
 def criar_bd():
     conn = sqlite3.connect('usuarios.db')
     cursor = conn.cursor()
@@ -24,104 +30,124 @@ def criar_bd():
     conn.commit()
     conn.close()
 
-# Função para registrar usuários
-def registrar_usuario(username, password):
+criar_bd()
+
+def registrar_usuario():
     conn = sqlite3.connect('usuarios.db')
     cursor = conn.cursor()
+
+    username = input("Digite um nome de usuário: ")
+    password = getpass.getpass("Digite uma senha: ")
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
     try:
-        cursor.execute('INSERT INTO usuarios (username, password) VALUES (?, ?)', (username, password))
+        cursor.execute('INSERT INTO usuarios (username, password) VALUES (?, ?)', (username, hashed_password))
         conn.commit()
-        messagebox.showinfo("Sucesso", "Usuário registrado com sucesso!")
+        print("Usuário registrado com sucesso!")
     except sqlite3.IntegrityError:
-        messagebox.showerror("Erro", "Nome de usuário já existe!")
+        print("Nome de usuário já existe!")
     conn.close()
+    pausar()
 
-# Função para fazer login
-def login_usuario(username, password):
+def login_usuario():
     conn = sqlite3.connect('usuarios.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM usuarios WHERE username = ? AND password = ?', (username, password))
-    usuario = cursor.fetchone()
+
+    username = input("Digite seu nome de usuário: ")
+    password = getpass.getpass("Digite sua senha: ")
+
+    cursor.execute('SELECT password FROM usuarios WHERE username = ?', (username,))
+    result = cursor.fetchone()
     conn.close()
-    if usuario:
-        messagebox.showinfo("Sucesso", "Login bem-sucedido!")
-        abrir_janela_produtos()
+
+    if result and bcrypt.checkpw(password.encode('utf-8'), result[0]):
+        print("Login bem-sucedido!")
+        pausar()
+        return True
     else:
-        messagebox.showerror("Erro", "Nome de usuário ou senha inválidos!")
+        print("Nome de usuário ou senha inválidos!")
+        pausar()
+        return False
 
-# Função para adicionar produtos
-def adicionar_produto(nome, preco, quantidade):
+def adicionar_produto():
     conn = sqlite3.connect('usuarios.db')
     cursor = conn.cursor()
+
+    nome = input("Digite o nome do produto: ")
+    preco = float(input("Digite o preço do produto: "))
+    quantidade = int(input("Digite a quantidade do produto: "))
+
     cursor.execute('INSERT INTO produtos (nome, preco, quantidade) VALUES (?, ?, ?)', (nome, preco, quantidade))
     conn.commit()
     conn.close()
-    messagebox.showinfo("Sucesso", "Produto adicionado com sucesso!")
+    print("Produto adicionado com sucesso!")
+    pausar()
 
-# Função para listar produtos
 def listar_produtos():
     conn = sqlite3.connect('usuarios.db')
     cursor = conn.cursor()
+
     cursor.execute('SELECT * FROM produtos')
     produtos = cursor.fetchall()
     conn.close()
-    return produtos
 
-# Interface gráfica usando tkinter
-def abrir_janela_registro():
-    janela_registro = tk.Toplevel()
-    janela_registro.title("Registrar")
+    if produtos:
+        for produto in produtos:
+            print(f"ID: {produto[0]}, Nome: {produto[1]}, Preço: {produto[2]}, Quantidade: {produto[3]}")
+    else:
+        print("Nenhum produto encontrado!")
+    pausar()
 
-    tk.Label(janela_registro, text="Nome de usuário").grid(row=0, column=0)
-    tk.Label(janela_registro, text="Senha").grid(row=1, column=0)
+def remover_produto():
+    listar_produtos()
+    produto_id = int(input("Digite o ID do produto que deseja remover: "))
+    conn = sqlite3.connect('usuarios.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
+    conn.commit()
+    conn.close()
+    print("Produto removido com sucesso!")
+    pausar()
 
-    entrada_username = tk.Entry(janela_registro)
-    entrada_password = tk.Entry(janela_registro, show="*")
-    entrada_username.grid(row=0, column=1)
-    entrada_password.grid(row=1, column=1)
+def main():
+    while True:
+        limpar_terminal()
+        print("1. Registrar")
+        print("2. Login")
+        print("3. Sair")
+        escolha = input("Escolha uma opção: ")
 
-    tk.Button(janela_registro, text="Registrar", command=lambda: registrar_usuario(entrada_username.get(), entrada_password.get())).grid(row=2, columnspan=2)
+        if escolha == '1':
+            registrar_usuario()
+        elif escolha == '2':
+            if login_usuario():
+                while True:
+                    limpar_terminal()
+                    print("1. Adicionar Produto")
+                    print("2. Listar Produtos")
+                    print("3. Remover Produto")
+                    print("4. Logout")
+                    escolha_produto = input("Escolha uma opção: ")
 
-def abrir_janela_login():
-    janela_login = tk.Tk()
-    janela_login.title("Login")
-
-    tk.Label(janela_login, text="Nome de usuário").grid(row=0, column=0)
-    tk.Label(janela_login, text="Senha").grid(row=1, column=0)
-
-    entrada_username = tk.Entry(janela_login)
-    entrada_password = tk.Entry(janela_login, show="*")
-    entrada_username.grid(row=0, column=1)
-    entrada_password.grid(row=1, column=1)
-
-    tk.Button(janela_login, text="Login", command=lambda: login_usuario(entrada_username.get(), entrada_password.get())).grid(row=2, columnspan=2)
-    tk.Button(janela_login, text="Registrar", command=abrir_janela_registro).grid(row=3, columnspan=2)
-
-    janela_login.mainloop()
-
-def abrir_janela_produtos():
-    janela_produtos = tk.Toplevel()
-    janela_produtos.title("Produtos")
-
-    tk.Label(janela_produtos, text="Nome do produto").grid(row=0, column=0)
-    tk.Label(janela_produtos, text="Preço").grid(row=1, column=0)
-    tk.Label(janela_produtos, text="Quantidade").grid(row=2, column=0)
-
-    entrada_nome = tk.Entry(janela_produtos)
-    entrada_preco = tk.Entry(janela_produtos)
-    entrada_quantidade = tk.Entry(janela_produtos)
-    entrada_nome.grid(row=0, column=1)
-    entrada_preco.grid(row=1, column=1)
-    entrada_quantidade.grid(row=2, column=1)
-
-    tk.Button(janela_produtos, text="Adicionar Produto", command=lambda: adicionar_produto(entrada_nome.get(), float(entrada_preco.get()), int(entrada_quantidade.get()))).grid(row=3, columnspan=2)
-
-    tk.Label(janela_produtos, text="Produtos cadastrados:").grid(row=4, columnspan=2)
-
-    produtos = listar_produtos()
-    for idx, produto in enumerate(produtos):
-        tk.Label(janela_produtos, text=f"ID: {produto[0]}, Nome: {produto[1]}, Preço: {produto[2]}, Quantidade: {produto[3]}").grid(row=5+idx, columnspan=2)
+                    if escolha_produto == '1':
+                        adicionar_produto()
+                    elif escolha_produto == '2':
+                        listar_produtos()
+                    elif escolha_produto == '3':
+                        remover_produto()
+                    elif escolha_produto == '4':
+                        break
+                    else:
+                        print("Escolha inválida!")
+                        pausar()
+            else:
+                print("Falha no login!")
+                pausar()
+        elif escolha == '3':
+            break
+        else:
+            print("Escolha inválida!")
+            pausar()
 
 if __name__ == "__main__":
-    criar_bd()  # Chamar a função para criar o banco de dados
-    abrir_janela_login()  # Chamar a função para abrir a janela de login
+    main()
