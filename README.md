@@ -1,4 +1,4 @@
-# README - Sistema de Gerenciamento de Usuários e Produtos
+# Sistema de Gerenciamento de Usuários e Produtos
 
 ## Visão Geral
 Este é um sistema simples de gerenciamento de usuários e produtos utilizando **SQLite** para armazenamento de dados e **bcrypt** para hashing de senhas. O sistema permite:
